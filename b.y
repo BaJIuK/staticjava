@@ -21,7 +21,7 @@ int yydebug = 1;
 %token INTEGER BOOLEAN VOID
 %token VARIABLE
 %token WHILE PRINT THEN IF
-%token PUBLIC CLASS STATIC MAIN BEGIN_BRACKET END_BRACKET
+%token PRIVATE PUBLIC CLASS STATIC MAIN BEGIN_BRACKET END_BRACKET
 %nonassoc ELSE
 
 %left OR
@@ -31,14 +31,50 @@ int yydebug = 1;
 %left '+' '-'
 %left '*' '/'
 
-%type <node_pointer> class
+%type <node_pointer> class method modificator method_list
 
 %%
 class : 
-	PUBLIC CLASS VARIABLE BEGIN_BRACKET END_BRACKET {
+	PUBLIC CLASS VARIABLE BEGIN_BRACKET method_list END_BRACKET {
+	
+	}
+method_list:
+	method {
+
+	} |
+	method method_list {
+	
+	}
+method : 
+	modificator STATIC type VARIABLE '(' argument_list ')' BEGIN_BRACKET END_BRACKET {
+
+	}
+	
+modificator :
+	PUBLIC {
+
+	} |
+	PRIVATE {
+
+	}
+
+type : 
+	BOOLEAN {
+
+	} |
+	INTEGER {
+
+	}
+
+argument_list : /* empty */ |
+	argument argument_list {
 	
 	}
 
+argument : 
+	type VARIABLE {
+
+	}
 %%
 
 void yyerror(const char *s) 

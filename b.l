@@ -5,7 +5,7 @@
 #include "y.tab.h"
 
 void yyerror(const char *);
-VarTableRecord * var_pointer;
+//VarTableRecord * var_pointer;
 %}
 
 %%
@@ -29,9 +29,9 @@ true   	{yylval.val = 1; return BOOLEAN;}
 false  	{yylval.val = 0; return BOOLEAN;}
 
 public 	{return PUBLIC;}
+private {return PRIVATE;}
 class	{return CLASS;}
 static  {return STATIC;}
-main	{return MAIN;}
 
 void	{return VOID;}
 int	{return INTEGER;}
