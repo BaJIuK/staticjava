@@ -44,7 +44,7 @@ boolean {return BOOLEAN;}
                        //add variable to the table or get it fom it!                      
                        return VARIABLE;
                        }
-, 	{ return *yytext;}
+"," 	{ return *yytext;}
 [+-/*()_=;] { return *yytext;}
 
 [ \t\n] ;

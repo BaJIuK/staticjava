@@ -1,2 +1,9 @@
 public class Fibonacci {
+    public static int main() {
+	int i;	
+    }
+
+    private static boolean isTrue() {
+	
+    }
 }
