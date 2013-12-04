@@ -4,13 +4,14 @@
 #include "types.h"
 #include "y.tab.h"
 
+
 void yyerror(const char *);
 //VarTableRecord * var_pointer;
 %}
 
 %%
 
-[0-9]+  {yylval.val = atoi(yytext);return INTEGER;}
+[0-9]+  {yylval.intValue = atoi(yytext);return INTEGER;}
 print   {return PRINT;} // not nesessary
 if      {return IF;}
 else    {return ELSE;}
@@ -25,8 +26,8 @@ while   {return WHILE;}
 ">"   	{return GT;}
 !=     	{return NE;}
 !      	{return NOT;}
-true   	{yylval.val = 1; return BOOLEAN;}
-false  	{yylval.val = 0; return BOOLEAN;}
+true   	{yylval.booleanValue = true; return BOOLEAN;}
+false  	{yylval.booleanValue = false; return BOOLEAN;}
 
 public 	{return PUBLIC;}
 private {return PRIVATE;}
@@ -36,13 +37,14 @@ static  {return STATIC;}
 void	{return VOID;}
 int	{return INTEGER;}
 boolean {return BOOLEAN;}
+String  {return STRING;}
 
 "{"	{return BEGIN_BRACKET;}
 "}"	{return END_BRACKET;}
 
 [a-zA-Z_][a-zA-Z_0-9]* { 
-                       //add variable to the table or get it fom it!                      
-                       return VARIABLE;
+                           yylval.stringValue = strdup(yytext);//имя                     
+                           return VARIABLE;
                        }
 "," 	{ return *yytext;}
 [+-/*()_=;] { return *yytext;}

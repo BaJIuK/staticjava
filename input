@@ -1,5 +1,5 @@
 public class Fibonacci {
-    public static int main() {
+    public static int main(int asdf) {
 	int i;	
     }
 
