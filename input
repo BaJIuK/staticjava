@@ -1,9 +1,19 @@
 public class Fibonacci {
     public static int main(int asdf) {
-	int i;	
+	int i;
+	i = 0;
     }
 
     private static boolean isTrue() {
 	
+    }
+
+    private static int kjre(int lol1, boolean t, int gaasf) {
+        int i;
+	int k;
+	int t;
+	i = 0;
+        k = 0;
+        t = 0;
     }
 }

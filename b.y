@@ -19,6 +19,7 @@ string getStringType(int type);
 string getStringNode(int type);
 string getStringNode2(TNode *node);
 string declarationToString(TNode *node);
+string assignmentToString(TNode *node);
 
 
 %}
@@ -37,6 +38,7 @@ string declarationToString(TNode *node);
     TMyArgumentList * argumentList; // аргумент лист для функций итд  
     TMyVariable * argument; // аргумент =)
     TNode * node; // тело
+    TMyDefinition * definition; // присвоение
 }
 
 %token INTEGER BOOLEAN VOID STRING
@@ -59,6 +61,7 @@ string declarationToString(TNode *node);
 %type <function> method
 %type <node> statement statement_list
 %type <declaration> declaration
+%type <definition> assignment
 
 %%
 class : 
@@ -139,7 +142,7 @@ statement_list : /* empty */ {
 	    node->next = NULL;
 	    $$ = node;
 	} |
-	statement_list statement {
+	statement statement_list {
 	    $1->next = $2;
             $$ = $1;	
 	}
@@ -153,7 +156,11 @@ statement :
 	    $$ = node;
 	} |
 	assignment ';' {
-	
+	    TNode* node = new TNode();
+	    node->type = DEFINITION_NODE;
+            node->definition = $1;
+	    node->next = NULL;
+	    $$ = node;
 	} |
 	WHILE '(' expression ')' BEGIN_BRACKET END_BRACKET {
 	
@@ -180,7 +187,12 @@ declaration :
 
 assignment :
 	VARIABLE '=' expression {
-	
+	    string name($1);
+            TMyDefinition* var = new TMyDefinition();
+            var->name = name;
+	    //TODO -!-
+            var->expression = NULL;
+	    $$ = var;     	
 	} 
 
 argument : 
@@ -242,8 +254,12 @@ string getStringNode2(TNode *node) {
         result.append(declarationToString(node));  
         return result;
     }
+    if (node->type == 3) {
+        result.append("assignment : ");
+        result.append(assignmentToString(node));  
+        return result;
+    }
     if (node->type == 2) return string("function call");
-    if (node->type == 3) return string("definition");
     if (node->type == 4) return string("nop");
 
     return string("");   
@@ -253,6 +269,12 @@ string declarationToString(TNode *node) {
     string result = getStringType(node->declaration->type);
     result.append(" ");
     result.append(node->declaration->name);
+    return result;
+}
+
+string assignmentToString(TNode *node) {
+    string result("");
+    result.append(node->declaration->name);    
     return result;
 }
 
