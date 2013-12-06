@@ -37,7 +37,8 @@ string assignmentToString(TNode *node);
     TMyVariableList * variableList; // объявление переменных итд (текущая память
     TMyArgumentList * argumentList; // аргумент лист для функций итд  
     TMyVariable * argument; // аргумент =)
-    TNode * node; // тело
+    TNode * node; // звено
+    TNodeList * nodeList; // тело
     TMyDefinition * definition; // присвоение
 }
 
@@ -59,9 +60,13 @@ string assignmentToString(TNode *node);
 %type <argumentList> argument_list
 %type <argument> argument
 %type <function> method
-%type <node> statement statement_list
+%type <node> statement
+%type <nodeList> statement_list
 %type <declaration> declaration
 %type <definition> assignment
+%type <expression> expression
+%type <intValue> INTEGER
+%type <booleanValue> BOOLEAN
 
 %%
 class : 
@@ -89,12 +94,11 @@ method :
             for (int i = 0; i < $6->data.size(); ++i) {
 	         cout << getStringType($6->data[i].type) << " " << $6->data[i].name << endl;
 	    }
-	    TNode* node = $9;
+	    TNodeList* nodeList = $9;
 	    cout << "body :" << endl;
-            while (node != NULL) {
-	    	cout << getStringNode2(node) << endl;
-                node = node->next;
-            }
+	    for (int i = 0; i < nodeList->data.size(); ++i) {
+	    	cout << getStringNode2(nodeList->data[i]) << endl;
+	    }
 	    cout << "===============END====================" << endl;
 #endif
            
@@ -137,13 +141,10 @@ argument_list : /* empty */ {
 	}
 
 statement_list : /* empty */ {
-	    TNode* node = new TNode();
-	    node->type = FINAL_NODE;
-	    node->next = NULL;
-	    $$ = node;
+	    $$ = new TNodeList();
 	} |
-	statement statement_list {
-	    $1->next = $2;
+	statement_list statement {
+	    $1->data.push_back($2);
             $$ = $1;	
 	}
 
@@ -152,14 +153,12 @@ statement :
 	    TNode* node = new TNode();
             node->type = DECLARATION_NODE;
             node->declaration = $1;
-	    node->next = NULL;
 	    $$ = node;
 	} |
 	assignment ';' {
 	    TNode* node = new TNode();
 	    node->type = DEFINITION_NODE;
             node->definition = $1;
-	    node->next = NULL;
 	    $$ = node;
 	} |
 	WHILE '(' expression ')' BEGIN_BRACKET END_BRACKET {
@@ -204,33 +203,68 @@ argument :
 	} 
 
 expression : 
+	expression '+' expression {
+	    //cout << " + " << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_PLUS; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression '-' expression {
+	    //cout << " - " << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_MINUS; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression '*' expression {
+	    //cout << " * " << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_MUL; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression '/' expression {
+	    //cout << " / " << endl;				
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_DIV; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+
+	} |
+	'(' expression ')' {
+	    $$ = $2;	
+	} |
 	INTEGER {
-	
+	    //cout << "INTEGER" << endl;
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_INTEGER; 
+	    expr->intValue = $1;
+	    $$ = expr;
 	} |
 	BOOLEAN {
-	
+	    //cout << "BOOLEAN" << endl;	
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_BOOLEAN; 
+	    expr->booleanValue = $1;
+	    $$ = expr;
 	} |
 	VARIABLE '(' argument_list ')' {
-	
+	    //cout << "FUNCTION CALL" << endl;		
 	} |
 	VARIABLE {
-	
+	    //cout << "VARIABLE" << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_VARIABLE; 
+	    string* name = new string($1);
+	    expr->name = name;
+	    $$ = expr;
 	}
-	expression '+' expression {
-	
-	}
-	expression '-' expression {
-	
-	}
-	expression '*' expression {
-	
-	}
-	expression '/' expression {
-	
-	}
-	'(' expression ')' {
-	
-	}
+       
 %%
 
 string getStringType(int type) {

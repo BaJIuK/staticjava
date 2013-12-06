@@ -5,13 +5,16 @@
 
 using namespace std;
 
+
+struct TMyExpression;
+
 // объявление переменной
 const int BOOLEAN_TYPE = 1;
 const int INTEGER_TYPE = 2;
 const int VOID_TYPE = 3;
 const int STRING_TYPE = 4;
 struct TMyVariable {
-    string name;     // имя
+    string name;      // имя
     int type;         // тип
     bool declarated;  // задекларирована (всегда true)
     bool initialized; // инициализирована?
@@ -48,24 +51,6 @@ struct TMyFunctionCall {
     TMyArgumentList* arguments; // список значений аргументов
 };
 
-
-// выражение
-const int BOOLEAN_EXPR = 1;   // звено - булевское значение
-const int INTEGER_EXPR = 2;   // целое
-const int OPERATION_EXPR = 3; // если это операция (+ - *)
-const int FUNCTION_EXPR = 4;  // если это вызов функции
-struct TMyExpression {
-    int type;
-    union {
-        int int_value;
-        bool bool_value;
-        int operation_type;
-        TMyFunctionCall* function_call;
-    };
-    TMyExpression* left;  // левый аргумент
-    TMyExpression* right; // правый аргумент
-};
-
 // декларирование переменной
 struct TMyDeclaration {
     string name; 		// name - имя переменной
@@ -83,12 +68,12 @@ const int DECLARATION_TYPE = 1; // декларация
 const int FUNCTION_TYPE = 2;    // вызов функции
 struct TMyBody {
     int type;
-    union {
-        TMyDeclaration* declaration; // оператор декларации
-	TMyFunctionCall* function;   // вызов функции
+    //union {
+        //TMyDeclaration* declaration; // оператор декларации
+	//TMyFunctionCall* function;   // вызов функции
 	//оператор цикла и вывода
 	//parseInt ...
-    };
+    //};
    // TMyNode * next; //следующее звено
 };
 
@@ -128,10 +113,44 @@ struct TNode {
         TMyFunctionCall * function;   // вызов функции 
         TMyDefinition * definition;
     };
-    TNode * next;
+};
+
+//тело программы цикла итд
+struct TNodeList {
+   vector<TNode*> data;
 };
 
 // все методы в главном классе
 struct TMyFunctionList {
     vector<TMyFunction> functions;
+};
+
+// выражение
+const int EXPR_PLUS = 1;
+const int EXPR_MINUS = 2;
+const int EXPR_MUL = 3;
+const int EXPR_DIV = 4;
+const int EXPR_INTEGER = 5;
+const int EXPR_BOOLEAN = 6;
+const int EXPR_AND = 7;
+const int EXPR_OR = 8;
+const int EXPR_NOT = 9;
+const int EXPR_VARIABLE = 10;
+const int EXPR_FUNCTION_CALL = 11;
+
+struct TMyExpression {
+    int type;
+    union {
+	int intValue;
+	bool booleanValue;
+	string* name;
+	TMyFunctionCall* function;
+    };
+    TMyExpression* left;
+    TMyExpression* right;
+
+    TMyExpression() {
+	left = NULL;
+        right = NULL;
+    };
 };

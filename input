@@ -12,8 +12,12 @@ public class Fibonacci {
         int i;
 	int k;
 	int t;
-	i = 0;
-        k = 0;
-        t = 0;
+	i = a + b;
+        k = a - b;
+        t = t * d;
+        e = e / q;
+	q = (((a + b) * (c + d)));
+          
+        qwqeqwe = 0;
     }
 }
