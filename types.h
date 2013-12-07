@@ -154,3 +154,9 @@ struct TMyExpression {
         right = NULL;
     };
 };
+
+// для функций!
+struct TMyExpressionList {
+    vector<TMyExpression*> data;
+};
+

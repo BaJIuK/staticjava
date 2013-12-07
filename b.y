@@ -40,6 +40,7 @@ string assignmentToString(TNode *node);
     TNode * node; // звено
     TNodeList * nodeList; // тело
     TMyDefinition * definition; // присвоение
+    TMyExpressionList * expressionList; // для вызова функций
 }
 
 %token INTEGER BOOLEAN VOID STRING
@@ -67,6 +68,7 @@ string assignmentToString(TNode *node);
 %type <expression> expression
 %type <intValue> INTEGER
 %type <booleanValue> BOOLEAN
+%type <expressionList> expression_list
 
 %%
 class : 
@@ -253,7 +255,7 @@ expression :
 	    expr->booleanValue = $1;
 	    $$ = expr;
 	} |
-	VARIABLE '(' argument_list ')' {
+	VARIABLE '(' expression_list ')' {
 	    //cout << "FUNCTION CALL" << endl;		
 	} |
 	VARIABLE {
@@ -264,6 +266,15 @@ expression :
 	    expr->name = name;
 	    $$ = expr;
 	}
+
+expression_list: /* empty */ {
+	    $$ = new TMyExpressionList();	
+	} |
+	expression_list expression {
+	    $1->data.push_back($2);
+	    $$ = $1; 
+	}
+        
        
 %%
 
