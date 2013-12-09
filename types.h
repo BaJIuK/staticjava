@@ -7,7 +7,8 @@ using namespace std;
 
 
 struct TMyExpression;
-
+struct TMyExpressionList;
+struct TNodeList;
 // объявление переменной
 const int BOOLEAN_TYPE = 1;
 const int INTEGER_TYPE = 2;
@@ -19,7 +20,7 @@ struct TMyVariable {
     bool declarated;  // задекларирована (всегда true)
     bool initialized; // инициализирована?
     bool local;       // является ли локальной?! (пока не знаю зачем)
- 
+    
     union {
 	int int_value;        // целое значение
 	bool bool_value;      // булево
@@ -33,7 +34,9 @@ struct TMyVariable {
 	declarated = declarated_;
 	initialized = initialized_;
 	local = local_;
-    }
+    };	
+    TMyVariable() {
+    };
 };
 
 struct TMyArgumentList {
@@ -47,8 +50,8 @@ struct TMyVariableList {
 
 // вызов функции
 struct TMyFunctionCall {
-    string name;                // имя
-    TMyArgumentList* arguments; // список значений аргументов
+    string name;                   // имя
+    TMyExpressionList* expressions; // список значений аргументов
 };
 
 // декларирование переменной
@@ -82,13 +85,13 @@ struct TNode;
 struct TMyFunction {
     string name;            // имя
     TMyArgumentList* args;  // аргументы
-    TNode* start;           // тело функции
+    TNodeList* list;           // тело функции
     int returnType;         // возвращаемое значение     
 
-    TMyFunction(string newName, TMyArgumentList* newArgs, TNode* newNode, int type) {
+    TMyFunction(string newName, TMyArgumentList* newArgs, TNodeList* newNode, int type) {
         name = newName;
         args = newArgs;
-        start = newNode;
+        list = newNode;
         returnType = type;
     }
 };
@@ -99,12 +102,19 @@ struct TMyDefinition {
     TMyExpression* expression; // значение
 };
 
+struct TMyIfStatement;
+struct TMyWhileStatement;
+
 struct TNode;
 // звено (одна команда)
 const int DECLARATION_NODE = 1;
 const int FUNCTION_CALL_NODE = 2;
 const int DEFINITION_NODE = 3;
 const int FINAL_NODE = 4;
+const int NODELIST_NODE = 5;
+const int RETURN_NODE = 6;
+const int IF_NODE = 7;
+const int WHILE_NODE = 8;
 
 struct TNode {
     int type;
@@ -112,6 +122,10 @@ struct TNode {
         TMyDeclaration * declaration; // объявление переменной
         TMyFunctionCall * function;   // вызов функции 
         TMyDefinition * definition;
+	TNodeList * nodeList;
+	TMyExpression * returnExpr;
+	TMyIfStatement * ifStatement;
+	TMyWhileStatement * whileStatement;
     };
 };
 
@@ -122,7 +136,18 @@ struct TNodeList {
 
 // все методы в главном классе
 struct TMyFunctionList {
-    vector<TMyFunction> functions;
+    vector<TMyFunction*> data;
+};
+
+struct TMyIfStatement {
+    TMyExpression* expression;
+    TNodeList* then_;
+    TNodeList* else_;
+};
+
+struct TMyWhileStatement {
+    TMyExpression* expression;
+    TNodeList* body;
 };
 
 // выражение
@@ -137,6 +162,12 @@ const int EXPR_OR = 8;
 const int EXPR_NOT = 9;
 const int EXPR_VARIABLE = 10;
 const int EXPR_FUNCTION_CALL = 11;
+const int EXPR_EQ = 12;
+const int EXPR_NE = 13;
+const int EXPR_GE = 14;
+const int EXPR_LE = 15;
+const int EXPR_GT = 16;
+const int EXPR_LT = 17;
 
 struct TMyExpression {
     int type;
@@ -160,3 +191,8 @@ struct TMyExpressionList {
     vector<TMyExpression*> data;
 };
 
+// программа!
+struct TMyProgram {
+    string name;
+    TMyFunctionList * functions;
+};

@@ -5,23 +5,25 @@
 #include <stdarg.h>
 #include <iostream>
 #include <stdio.h>
-
+#include <set>
 #include "types.h"
 
 int yylex(void);
 void yyerror(const char *);
 int yydebug = 1;
 TMyFunctionList allFunctions;
+extern int yylineno;
 
-#define DEBUG
+//#define DEBUG
 
 string getStringType(int type);
 string getStringNode(int type);
 string getStringNode2(TNode *node);
 string declarationToString(TNode *node);
 string assignmentToString(TNode *node);
+string expressionToString(TMyExpression *expr);
 
-
+TMyProgram* mainProgram;
 %}
 
 %union {
@@ -41,12 +43,14 @@ string assignmentToString(TNode *node);
     TNodeList * nodeList; // тело
     TMyDefinition * definition; // присвоение
     TMyExpressionList * expressionList; // для вызова функций
+    TMyFunctionList * functionList;
 }
 
 %token INTEGER BOOLEAN VOID STRING
 %token VARIABLE
-%token WHILE PRINT THEN IF
+%token WHILE THEN IF RETURN
 %token PRIVATE PUBLIC CLASS STATIC MAIN BEGIN_BRACKET END_BRACKET
+%nonassoc IF
 %nonassoc ELSE
 
 %left OR
@@ -69,23 +73,31 @@ string assignmentToString(TNode *node);
 %type <intValue> INTEGER
 %type <booleanValue> BOOLEAN
 %type <expressionList> expression_list
+%type <functionList> method_list
 
 %%
+
 class : 
 	PUBLIC CLASS VARIABLE BEGIN_BRACKET method_list END_BRACKET {
-	
+	    string name($3);
+	    mainProgram = new TMyProgram();
+	    mainProgram->name = name;
+	    mainProgram->functions = $5; 
 	}
 method_list:
 	method {
-
+	    TMyFunctionList* list = new TMyFunctionList();
+	    list->data.push_back($1);
+	    $$ = list;
 	} |
 	method_list method {
-	
+	    $1->data.push_back($2);
+  	    $$ = $1;
 	}
 method : 
 	modificator STATIC type VARIABLE '(' argument_list ')' BEGIN_BRACKET statement_list END_BRACKET {
             string name($4);
-	    TMyFunction* func = new TMyFunction($4, $6, NULL, $3);
+	    TMyFunction* func = new TMyFunction($4, $6, $9, $3);
 	    $$ = func;
 
 #ifdef DEBUG
@@ -102,8 +114,7 @@ method :
 	    	cout << getStringNode2(nodeList->data[i]) << endl;
 	    }
 	    cout << "===============END====================" << endl;
-#endif
-           
+#endif  
 	}
 	
 modificator :
@@ -151,6 +162,18 @@ statement_list : /* empty */ {
 	}
 
 statement :
+	RETURN expression';' {
+	    TNode* node = new TNode();
+            node->type = RETURN_NODE;
+	    node->returnExpr = $2;
+	    $$ = node;	
+	} |
+	RETURN ';' {
+	    TNode* node = new TNode();
+            node->type = RETURN_NODE;
+	    node->returnExpr = NULL;
+	    $$ = node;
+	} |
 	declaration ';' {
 	    TNode* node = new TNode();
             node->type = DECLARATION_NODE;
@@ -163,13 +186,101 @@ statement :
             node->definition = $1;
 	    $$ = node;
 	} |
-	WHILE '(' expression ')' BEGIN_BRACKET END_BRACKET {
-	
+	WHILE '(' expression ')' BEGIN_BRACKET statement_list END_BRACKET {
+	    TNode* node = new TNode();
+	    node->type = WHILE_NODE;
+	    TMyWhileStatement* x = new TMyWhileStatement();
+	    x->expression = $3;
+	    x->body = $6;
+	    node->whileStatement = x;
+	    $$ = node;
 	} |
-	VARIABLE '(' argument_list ')' ';' {
-	
-	} 
-	
+	VARIABLE '(' expression_list ')' ';' {
+	    TNode* node = new TNode();
+	    node->type = FUNCTION_CALL_NODE;
+	    TMyFunctionCall* call = new TMyFunctionCall();
+	    string name($1);
+	    call->name = name;
+	    call->expressions = $3;
+	    node->function = call;
+	    $$ = node;
+	} |
+	BEGIN_BRACKET statement_list END_BRACKET {
+	    TNode* node = new TNode();
+	    node->type = NODELIST_NODE;
+	    node->nodeList = $2;
+	    $$ = node;	
+	} |
+	IF '(' expression ')' BEGIN_BRACKET statement_list END_BRACKET ELSE BEGIN_BRACKET statement_list END_BRACKET {
+	    TNode* y = new TNode();
+	    y->type = IF_NODE;
+	    TMyIfStatement * x = new TMyIfStatement();
+	    x->expression = $3;
+	    x->then_ = $6;
+	    x->else_ = $10;
+	    y->ifStatement = x;	
+	    $$ = y;
+	} |
+	IF '(' expression ')' BEGIN_BRACKET statement_list END_BRACKET {
+	    TNode* y = new TNode();
+	    y->type = IF_NODE;
+	    TMyIfStatement * x = new TMyIfStatement();
+	    x->expression = $3;
+	    x->then_ = $6;
+	    x->else_ = NULL;	
+	    y->ifStatement = x;	
+	    $$ = y;
+	} /*|
+	IF '(' expression ')' statement {
+	    TNode* y = new TNode();
+	    y->type = IF_NODE;
+	    TNodeList* list = new TNodeList();
+	    TMyIfStatement * x = new TMyIfStatement();
+	    x->expression = $3;
+	    list->data.push_back($5);
+	    x->then_ = list;
+	    x->else_ = NULL;	
+	    y->ifStatement = x;	
+	    $$ = y;
+	} |
+	IF '(' expression ')' statement ELSE BEGIN_BRACKET statement_list END_BRACKET {
+	    TNode* y = new TNode();
+	    y->type = IF_NODE;
+	    TNodeList* list = new TNodeList();
+	    TMyIfStatement * x = new TMyIfStatement();
+	    x->expression = $3;
+	    list->data.push_back($5);
+	    x->then_ = list;
+	    x->else_ = $8;	
+	    y->ifStatement = x;	
+	    $$ = y;
+	} |
+	IF '(' expression ')' statement ELSE statement {
+	    TNode* y = new TNode();
+	    y->type = IF_NODE;
+	    TNodeList* list1 = new TNodeList();
+     	    TNodeList* list2 = new TNodeList();
+	    TMyIfStatement * x = new TMyIfStatement();
+	    x->expression = $3;
+	    list1->data.push_back($5);
+	    list2->data.push_back($7);
+	    x->then_ = list1;
+	    x->else_ = list2;	
+	    y->ifStatement = x;	
+	    $$ = y;
+	} |
+        IF '(' expression ')' ELSE statement {
+	    TNode* y = new TNode();
+	    y->type = IF_NODE;
+	    TNodeList* list2 = new TNodeList();
+	    TMyIfStatement * x = new TMyIfStatement();
+	    x->expression = $3;
+	    list2->data.push_back($6);
+	    x->then_ = NULL;
+	    x->else_ = list2;	
+	    y->ifStatement = x;	
+	    $$ = y;
+	} */
 
 declaration :
 	type VARIABLE {
@@ -181,8 +292,7 @@ declaration :
 	type VARIABLE '=' expression {
 	    string name($2);
 	    int type = $1;
-	    //TODO_EXPRESSION
-            TMyDeclaration* var = new TMyDeclaration(name, type, NULL);
+            TMyDeclaration* var = new TMyDeclaration(name, type, $4);
 	    $$ = var; 	
 	}	
 
@@ -191,8 +301,7 @@ assignment :
 	    string name($1);
             TMyDefinition* var = new TMyDefinition();
             var->name = name;
-	    //TODO -!-
-            var->expression = NULL;
+            var->expression = $3;
 	    $$ = var;     	
 	} 
 
@@ -256,6 +365,14 @@ expression :
 	    $$ = expr;
 	} |
 	VARIABLE '(' expression_list ')' {
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_FUNCTION_CALL;
+	    TMyFunctionCall* call = new TMyFunctionCall();
+	    string name($1);
+	    call->name = name;
+	    call->expressions = $3;
+	    expr->function = call;
+	    $$ = expr;
 	    //cout << "FUNCTION CALL" << endl;		
 	} |
 	VARIABLE {
@@ -265,16 +382,93 @@ expression :
 	    string* name = new string($1);
 	    expr->name = name;
 	    $$ = expr;
+	} |
+	expression OR expression {
+	    //cout << " OR " << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_OR; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression AND expression {
+	    //cout << " AND " << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_AND; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression EQ expression {
+	    //cout << " == " << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_EQ; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression NE expression {
+	    //cout << " != " << endl;				
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_NE; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression GT expression {
+	    //cout << " > " << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_GT; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression LT expression {
+	    //cout << " < " << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_LT; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression GE expression {
+	    //cout << " >= " << endl;			
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_GE; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	expression LE expression {
+	    //cout << " <= " << endl;				
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_LE; 
+	    expr->left = $1;
+	    expr->right = $3;
+	    $$ = expr;
+	} |
+	NOT expression {
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_NOT; 
+	    expr->left = $2;
+	    $$ = expr;	
 	}
+
+
 
 expression_list: /* empty */ {
 	    $$ = new TMyExpressionList();	
 	} |
-	expression_list expression {
-	    $1->data.push_back($2);
+	expression_list ',' expression {
+	    $1->data.push_back($3);
 	    $$ = $1; 
+	} |
+  	expression {
+	    TMyExpressionList* list = new TMyExpressionList();
+	    list->data.push_back($1);
+	    $$ = list;
 	}
-        
+       
        
 %%
 
@@ -306,7 +500,7 @@ string getStringNode2(TNode *node) {
     }
     if (node->type == 2) return string("function call");
     if (node->type == 4) return string("nop");
-
+    if (node->type == NODELIST_NODE) return string("node list");	
     return string("");   
 }
 
@@ -323,9 +517,575 @@ string assignmentToString(TNode *node) {
     return result;
 }
 
+string expressionToString(TMyExpression *expr) {
+   string result("");
+   if (expr->type == EXPR_PLUS) {
+   	result.append(expressionToString(expr->left));
+	result.append("+");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_MINUS) {
+   	result.append(expressionToString(expr->left));
+	result.append("-");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_MUL) {
+   	result.append(expressionToString(expr->left));
+	result.append("*");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_DIV) {
+   	result.append(expressionToString(expr->left));
+	result.append("/");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_AND) {
+   	result.append(expressionToString(expr->left));
+	result.append(" AND ");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_OR) {
+   	result.append(expressionToString(expr->left));
+	result.append(" OR ");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_NOT) {
+	result.append("!");
+	result.append(expressionToString(expr->left));
+	return result;
+   } 
+   if (expr->type == EXPR_EQ) {
+   	result.append(expressionToString(expr->left));
+	result.append("==");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_NE) {
+   	result.append(expressionToString(expr->left));
+	result.append("!=");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_GE) {
+   	result.append(expressionToString(expr->left));
+	result.append(">=");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_LE) {
+   	result.append(expressionToString(expr->left));
+	result.append("<=");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_GT) {
+   	result.append(expressionToString(expr->left));
+	result.append(">");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_LT) {
+   	result.append(expressionToString(expr->left));
+	result.append("<");
+	result.append(expressionToString(expr->right));
+	return result;
+   } 
+   if (expr->type == EXPR_INTEGER) {
+   	result.append("INTEGER");
+        return result;
+   }
+   if (expr->type == EXPR_BOOLEAN) {
+   	result.append("BOOLEAN");
+        return result;
+   }
+   if (expr->type == EXPR_VARIABLE) {
+   	result.append("VARIABLE");
+        return result;
+   }
+   if (expr->type == EXPR_FUNCTION_CALL) {
+   	result.append("FUNCTION_CALL");
+        return result;
+   }
+}
+// DEBUG END ^^
+
+// WORK WITH VARIABLES
+
+void addVariable(TMyVariable* x, set<string> &local, map<string, vector<TMyVariable*> > &var) {
+    if (local.count(x->name) != 0) {
+	cout << "Duplicate declaration: " << x->name << endl;
+	exit(0);
+    }
+    local.insert(x->name);
+    var[x->name].push_back(x);
+}
+
+TMyVariable* getVariable(string name, map<string, vector<TMyVariable*> > &var) {
+    if (var.count(name) == 0) {
+	cout << name << " is not declared!" << endl;
+	exit(0);
+    }
+    return var[name][var[name].size() - 1];
+}
+
+void deleteVariable(string name, map<string, vector<TMyVariable*> > &var) {
+    if (var.count(name) == 0) {
+	cout << name << " cannot delete!" << endl;
+	exit(0);
+    }
+    var[name].pop_back();
+    if (var[name].size() == 0) {
+	var.erase(name);
+    }
+}
+
+void deleteSetVariables(set<string> &local, map<string, vector<TMyVariable*> > &var) {
+    set<string>::iterator ik;
+    for(ik = local.begin(); ik != local.end(); ++ik)
+        deleteVariable(*ik, var);
+}
+
+// processor!)
+
+// +IMPORTANT
+TMyFunctionList* functions;
+// -IMPORTANT
+
+TMyVariable* runFunction(TMyFunction* func, map<string, vector<TMyVariable*> > &var);
+TMyVariable* processFunctionCall(TMyFunctionCall* x, map<string, vector<TMyVariable*> > &var);
+
+TMyVariable* processExpression(TMyExpression* expr, map<string, vector<TMyVariable*> > &var) {
+    TMyVariable * result = new TMyVariable();
+
+    if (expr->type == EXPR_INTEGER) {
+    	result->type = INTEGER_TYPE;    
+	result->int_value = expr->intValue;
+	return result;
+    }
+
+    if (expr->type == EXPR_BOOLEAN) {
+    	result->type = BOOLEAN_TYPE;    
+	result->bool_value = expr->booleanValue;
+	return result;
+    }
+
+    if (expr->type == EXPR_VARIABLE) {
+	TMyVariable* variable = getVariable(*expr->name, var);
+    	result->type = variable->type;
+	if (variable->initialized == false) {
+	    cout << endl;
+	    cout << "Variable " << variable->name << " isn't initialized!" << endl;
+	    exit(0);	
+	}
+        if (variable->type == INTEGER_TYPE) {
+       	    result->int_value = variable->int_value;
+        } else if (variable->type == BOOLEAN_TYPE) {
+       	    result->bool_value = variable->bool_value;
+        }
+	return result;
+    }
+
+    //function call
+    if (expr->type == EXPR_FUNCTION_CALL) { 
+	result = processFunctionCall(expr->function, var);
+	if (result == NULL) {
+	    cout << "Invalid function call in expression " << expr->function->name << endl;
+	    exit(0);	
+	}
+	return result;
+    }
+
+    if (expr->type == EXPR_NOT) {
+        TMyVariable * left = processExpression(expr->left,var);
+        if (left->type != BOOLEAN_TYPE) {
+	    cout << "Wrong types in expressioN!" << endl;
+	    exit(0);
+	}
+        result->type = BOOLEAN_TYPE;
+	result->bool_value = !(left->bool_value);
+        return result;
+    }
+
+    TMyVariable * left = processExpression(expr->left,var);
+    TMyVariable * right = processExpression(expr->right,var);
+
+    
+    if (expr->type == EXPR_PLUS) {
+        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = INTEGER_TYPE;
+	result->int_value = left->int_value + right->int_value;
+	return result;	
+    }
+    
+    if (expr->type == EXPR_MINUS) {
+        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = INTEGER_TYPE;
+	result->int_value = left->int_value - right->int_value;
+	return result;	
+    }
+    
+    if (expr->type == EXPR_MUL) {
+        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = INTEGER_TYPE;
+	result->int_value = left->int_value * right->int_value;
+	return result;	
+    }
+    
+    if (expr->type == EXPR_DIV) {
+        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = INTEGER_TYPE;
+	result->int_value = left->int_value / right->int_value;
+	return result;	
+    }
+
+    if (expr->type == EXPR_OR) {
+        if (left->type != BOOLEAN_TYPE || right->type != BOOLEAN_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = BOOLEAN_TYPE;
+	result->bool_value = left->bool_value | right->bool_value;
+	return result;	
+    }
+
+    if (expr->type == EXPR_AND) {
+        if (left->type != BOOLEAN_TYPE || right->type != BOOLEAN_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = BOOLEAN_TYPE;
+	result->bool_value = left->bool_value & right->bool_value;
+	return result;	
+    }
+
+    if (expr->type == EXPR_GE) {
+        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = BOOLEAN_TYPE;
+	result->bool_value = left->int_value >= right->int_value;
+	return result;	
+    }
+
+    if (expr->type == EXPR_LE) {
+        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = BOOLEAN_TYPE;
+	result->bool_value = left->int_value <= right->int_value;
+	return result;	
+    }
+
+    if (expr->type == EXPR_GT) {
+        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = BOOLEAN_TYPE;
+	result->bool_value = left->int_value > right->int_value;
+	return result;	
+    }
+
+    if (expr->type == EXPR_LT) {
+        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = BOOLEAN_TYPE;
+	result->bool_value = left->int_value < right->int_value;
+	return result;	
+    }
+
+    if (expr->type == EXPR_EQ) {
+        if (left->type != right->type) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = BOOLEAN_TYPE;
+	if (left->type = INTEGER_TYPE) {
+	    result->bool_value = left->int_value == right->int_value;
+	} else {
+	    result->bool_value = left->bool_value == right->bool_value;	
+	}
+	return result;	
+    }
+
+    if (expr->type == EXPR_NE) {
+        if (left->type != right->type) {
+	    cout << "Wrong types in expression!" << endl;
+	    exit(0);	
+	}
+	result->type = BOOLEAN_TYPE;
+	if (left->type = INTEGER_TYPE) {
+	    result->bool_value = left->int_value != right->int_value;
+	} else {
+	    result->bool_value = left->bool_value != right->bool_value;	
+	}
+	return result;	
+    }
+
+    cout << "Failed to calculate expression!" << endl; 
+    exit(0);
+    return NULL;
+}
+
+void processDeclaration(TMyDeclaration* declaration,  set<string> &local, map<string, vector<TMyVariable*> > &var) {
+	TMyVariable* newVar = new TMyVariable;
+	newVar->name = declaration->name;
+	newVar->type = declaration->type;
+	if (declaration->expression != NULL) {
+	    newVar->initialized = true;
+	    TMyVariable* expr = processExpression(declaration->expression, var);
+	    if (newVar->type == INTEGER_TYPE) {
+		newVar->int_value = expr->int_value; 
+	    }
+	    if (newVar->type == BOOLEAN_TYPE) {
+		newVar->bool_value = expr->bool_value; 
+	    }
+	} else {
+	    newVar->initialized = false;
+	}
+	addVariable(newVar,local,var);
+}
+
+void processSYSTEMOUTPRINTLN(TMyExpressionList* x, map<string, vector<TMyVariable*> > &var) {
+    for(int i = 0; i < x->data.size(); ++i) {
+        TMyVariable* expr = processExpression(x->data[i], var);
+	if (expr->type == INTEGER_TYPE) {
+	    cout << expr->int_value << ' ';
+	} else {
+	    if (expr->bool_value == true) {
+	       cout << "true";
+	    } else {
+		   cout << "false";
+            }
+	}
+    }
+    cout << endl;
+}
+
+
+void processSYSTEMOUTPRINT(TMyExpressionList* x, map<string, vector<TMyVariable*> > &var) {
+    for(int i = 0; i < x->data.size(); ++i) {
+        TMyVariable* expr = processExpression(x->data[i], var);
+	if (expr->type == INTEGER_TYPE) {
+	    cout << expr->int_value << ' ';
+	} else {
+	    if (expr->bool_value == true) {
+	       cout << "true";
+	    } else {
+		   cout << "false";
+            }
+	}
+    }
+}
+
+TMyVariable* processDefinition(TMyDefinition* x, map<string, vector<TMyVariable*> > &var) {
+    TMyVariable* expr = getVariable(x->name, var);
+    TMyVariable* cool = processExpression(x->expression, var);
+    if (expr->type == INTEGER_TYPE) {
+	if (cool->type != INTEGER_TYPE) {
+	    cout << "Wrong expression type!" << endl;
+	    exit(0);
+	}
+        expr->int_value = cool->int_value;
+    }
+    if (expr->type == BOOLEAN_TYPE) {
+    	if (cool->type != BOOLEAN_TYPE) {
+	    cout << "Wrong expression type!" << endl;
+	    exit(0);
+	}
+	expr->bool_value = cool->bool_value;
+    }
+    return NULL;  
+}
+
+
+
+TMyVariable* callMyFunction(TMyFunctionCall* xx, TMyFunction* y, map<string, vector<TMyVariable*> > &var) {
+    if (xx->expressions->data.size() != y->args->data.size()) {
+	cout << "Invalid number of arguments in function " << y->name << endl;
+	exit(0);
+    }
+    TMyArgumentList* args = y->args;
+    TMyExpressionList* list = xx->expressions;
+
+    set<string> local;
+    map<string, vector<TMyVariable*> > var2;
+
+    for (int i = 0; i < xx->expressions->data.size(); ++i) {
+    	TMyVariable* x = new TMyVariable();	
+	x->name = args->data[i].name;
+	x->type = args->data[i].type; 
+	x->initialized = true;
+	if (args->data[i].type == INTEGER_TYPE) {
+	    TMyVariable* expr = processExpression(list->data[i], var); 
+	    if (expr->type != INTEGER_TYPE) {
+	    	cout << "Invalid expression type!" << endl;
+	        exit(0);
+	    }
+	    x->int_value = expr->int_value;
+	}
+	if (args->data[i].type == BOOLEAN_TYPE) {
+	    TMyVariable* expr = processExpression(list->data[i], var); 
+	    if (expr->type != BOOLEAN_TYPE) {
+	    	cout << "Invalid expression type!" << endl;
+	        exit(0);
+	    }
+	    x->bool_value = expr->bool_value;
+	}
+	addVariable(x,local,var2);
+    }
+
+   return runFunction(y,var2);
+}
+
+TMyVariable* processFunctionCall(TMyFunctionCall* x, map<string, vector<TMyVariable*> > &var) {
+    if (x->name == "System.out.println") {
+	    processSYSTEMOUTPRINTLN(x->expressions,var);
+	    return NULL;      	
+	}	
+    if (x->name == "System.out.print") {
+	    processSYSTEMOUTPRINT(x->expressions,var);
+	    return NULL;      	
+	}
+    for(int i = 0; i < functions->data.size(); ++i) {
+	if (functions->data[i]->name == x->name) {
+	    return callMyFunction(x, functions->data[i], var);	
+	}
+    } 	
+}
+
+TMyVariable* processNodes(TNodeList* algo, map<string, vector<TMyVariable*> > &var);
+
+TMyVariable* processIfNode(TMyIfStatement* x, map<string, vector<TMyVariable*> > &var) {
+    TMyVariable* expr = processExpression(x->expression, var);
+    if (expr->type != BOOLEAN_TYPE) {
+	cout << "If statement has not boolean type!" << endl;
+	exit(0);
+    }   
+    if (expr->bool_value == true) {
+        return processNodes(x->then_, var);
+    } else {
+	    return processNodes(x->else_, var);
+	}
+}
+
+TMyVariable* processWhileNode(TMyWhileStatement* x, map<string, vector<TMyVariable*> > &var) {
+    while (true) {
+    	TMyVariable* expr = processExpression(x->expression, var);
+	if (expr->type != BOOLEAN_TYPE) {
+		cout << "While statement has not boolean type!" << endl;
+		exit(0);
+        }
+        if (expr->bool_value == true) {
+            TMyVariable* res = processNodes(x->body, var);
+	    if (res != NULL) return res;
+        } else {
+	    return NULL;
+	}
+	  
+    }
+}
+
+TMyVariable* processNode(TNode* x,  set<string> &local, map<string, vector<TMyVariable*> > &var) {
+    if (x->type == DECLARATION_NODE) {
+	processDeclaration(x->declaration, local, var);
+	return NULL;
+    }
+    if (x->type == FUNCTION_CALL_NODE) {
+        processFunctionCall(x->function, var);
+	return NULL;
+    }	
+    if (x->type == DEFINITION_NODE) {
+        processDefinition(x->definition, var);
+	return NULL;
+    }
+    if (x->type == NODELIST_NODE) {
+  	return processNodes(x->nodeList, var);  
+    }
+    if (x->type == RETURN_NODE) {
+       return processExpression(x->returnExpr, var);  
+    }
+    if (x->type == IF_NODE) {
+       return processIfNode(x->ifStatement, var);
+    }
+    if (x->type == WHILE_NODE) {
+       return processWhileNode(x->whileStatement, var);
+    }
+    return NULL;
+}
+
+TMyVariable* processNodes(TNodeList* algo, map<string, vector<TMyVariable*> > &var) {
+    if (algo == NULL) {
+    	return NULL;
+    }
+    //cout << "123" << endl;
+    set<string> local;
+    TMyVariable* returnValue;
+    for(int i = 0; i < algo->data.size(); ++i) {
+        if ((returnValue = processNode(algo->data[i], local, var)) != NULL) {
+	   deleteSetVariables(local, var);
+	   return returnValue;	
+	}	
+    }
+    deleteSetVariables(local,var); 
+    return NULL;
+}
+
+TMyVariable* runFunction(TMyFunction* func, map<string, vector<TMyVariable*> > &var) {
+    TNodeList* algo = func->list;
+    TMyVariable* v = processNodes(algo, var);
+    if (v != NULL) {
+	if (func->returnType != v->type) {
+	    cout << "Invalid return type in function " << func->name << endl;
+	    exit(0);
+	}
+	return v;
+    }
+    if (func->returnType != VOID_TYPE) {
+    	cout << "No return statement in function " << func->name << endl;
+	exit(0);
+    }
+    return NULL;
+}
+
+void runTheProgramm(TMyProgram* prog) {
+    functions = prog->functions;
+    for (int i = 0; i < functions->data.size(); ++i) {
+        if (functions->data[i]->name == "main") {
+	    map<string, vector<TMyVariable*> > var;
+	    runFunction(functions->data[i], var);
+	    return;	
+	}
+    }
+    cout << "No method 'main' found!" << endl;
+}
+
+
 void yyerror(const char *s) 
 {
-  fprintf(stderr, "%s\n", s);
+   fprintf(stderr, "%s line: %d\n", s, yylineno);
 }
 
 // инициализация перед парсингом всего
@@ -344,9 +1104,10 @@ int main(int argc, char** argv)
     
     init();
     
-    yyparse();
-    
-    printf("The build was successfull!\n");
+    yyparse(); 
+    printf("The build was successfull!\n\n\n\nRunning the programm...\n\n\n");
+
+    runTheProgramm(mainProgram);
     return 0;
 }
 

@@ -8,11 +8,10 @@
 void yyerror(const char *);
 //VarTableRecord * var_pointer;
 %}
-
+%option yylineno
 %%
 
 [0-9]+  {yylval.intValue = atoi(yytext);return INTEGER;}
-print   {return PRINT;} // not nesessary
 if      {return IF;}
 else    {return ELSE;}
 then    {return THEN;}
@@ -38,11 +37,13 @@ void	{return VOID;}
 int	{return INTEGER;}
 boolean {return BOOLEAN;}
 String  {return STRING;}
+"return"  {return RETURN;}
+
 
 "{"	{return BEGIN_BRACKET;}
 "}"	{return END_BRACKET;}
 
-[a-zA-Z_][a-zA-Z_0-9]* { 
+[a-zA-Z_][a-zA-Z_0-9.]* { 
                            yylval.stringValue = strdup(yytext);//имя                     
                            return VARIABLE;
                        }
