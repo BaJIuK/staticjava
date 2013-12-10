@@ -6,6 +6,8 @@
 #include <iostream>
 #include <stdio.h>
 #include <set>
+#include <stdlib.h>
+#include <sstream>
 #include "types.h"
 
 int yylex(void);
@@ -30,6 +32,7 @@ TMyProgram* mainProgram;
     int intValue;
     char* stringValue;
     bool booleanValue; 
+    double doubleValue;
     TMyFunction * function; // указатель на функцию
     TMyVariable * variable; // указатель на переменную \ константу
     TMyBody * body;         // указатель на тело (цикла, функции, чего угодно)
@@ -46,7 +49,7 @@ TMyProgram* mainProgram;
     TMyFunctionList * functionList;
 }
 
-%token INTEGER BOOLEAN VOID STRING
+%token INTEGER BOOLEAN VOID STRING DOUBLE
 %token VARIABLE
 %token WHILE THEN IF RETURN
 %token PRIVATE PUBLIC CLASS STATIC MAIN BEGIN_BRACKET END_BRACKET
@@ -60,7 +63,7 @@ TMyProgram* mainProgram;
 %left '+' '-'
 %left '*' '/'
 
-%type <stringValue> VARIABLE
+%type <stringValue> VARIABLE STRING
 %type <intValue> type
 %type <argumentList> argument_list
 %type <argument> argument
@@ -74,6 +77,7 @@ TMyProgram* mainProgram;
 %type <booleanValue> BOOLEAN
 %type <expressionList> expression_list
 %type <functionList> method_list
+%type <doubleValue> DOUBLE
 
 %%
 
@@ -137,6 +141,9 @@ type :
 	} |
         STRING {
             $$ = STRING_TYPE;
+	} |
+	DOUBLE {
+	    $$ = DOUBLE_TYPE;	
 	}
 
 argument_list : /* empty */ {
@@ -349,6 +356,19 @@ expression :
 	} |
 	'(' expression ')' {
 	    $$ = $2;	
+	} |
+	STRING {
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_STRING; 
+	    string name($1);
+            expr->name = new string(name);
+	    $$ = expr;	
+	} |
+	DOUBLE {
+	    TMyExpression* expr = new TMyExpression();
+            expr->type = EXPR_DOUBLE; 
+            expr->doubleValue = $1;
+	    $$ = expr;		
 	} |
 	INTEGER {
 	    //cout << "INTEGER" << endl;
@@ -669,6 +689,18 @@ TMyVariable* processExpression(TMyExpression* expr, map<string, vector<TMyVariab
 	return result;
     }
 
+    if (expr->type == EXPR_DOUBLE) {
+    	result->type = DOUBLE_TYPE;    
+	result->double_value = expr->doubleValue;
+	return result;
+    }
+
+    if (expr->type == EXPR_STRING) {
+    	result->type = STRING_TYPE;    
+	result->string_value = expr->name;
+	return result;
+    }
+
     if (expr->type == EXPR_BOOLEAN) {
     	result->type = BOOLEAN_TYPE;    
 	result->bool_value = expr->booleanValue;
@@ -687,6 +719,10 @@ TMyVariable* processExpression(TMyExpression* expr, map<string, vector<TMyVariab
        	    result->int_value = variable->int_value;
         } else if (variable->type == BOOLEAN_TYPE) {
        	    result->bool_value = variable->bool_value;
+        } else if (variable->type == STRING_TYPE) {
+       	    result->string_value = new string(*variable->string_value);
+        } else if (variable->type == DOUBLE_TYPE) {
+       	    result->double_value = variable->double_value;
         }
 	return result;
     }
@@ -704,7 +740,7 @@ TMyVariable* processExpression(TMyExpression* expr, map<string, vector<TMyVariab
     if (expr->type == EXPR_NOT) {
         TMyVariable * left = processExpression(expr->left,var);
         if (left->type != BOOLEAN_TYPE) {
-	    cout << "Wrong types in expressioN!" << endl;
+	    cout << "Wrong types in expression." << endl;
 	    exit(0);
 	}
         result->type = BOOLEAN_TYPE;
@@ -717,48 +753,115 @@ TMyVariable* processExpression(TMyExpression* expr, map<string, vector<TMyVariab
 
     
     if (expr->type == EXPR_PLUS) {
-        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
-	result->type = INTEGER_TYPE;
-	result->int_value = left->int_value + right->int_value;
-	return result;	
+		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->type = INTEGER_TYPE;
+		 	result->int_value = left->int_value + right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->type = INTEGER_TYPE;
+		 	result->int_value = left->int_value + right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->type = DOUBLE_TYPE;
+		 	result->double_value = left->double_value + right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->type = DOUBLE_TYPE;
+		 	result->double_value = left->double_value + right->int_value;
+		        return result;
+		}
+		if (left->type == STRING_TYPE && right->type == STRING_TYPE) {
+		 	result->type = STRING_TYPE;
+	                string *name = new string(*left->string_value);
+	 		name->append(*right->string_value);
+		 	result->string_value = name;
+		        return result;
+		}
+	cout << "Can't plus diffrent types or boolean ones." << endl;	
+	exit(0);
     }
     
     if (expr->type == EXPR_MINUS) {
-        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
-	result->type = INTEGER_TYPE;
-	result->int_value = left->int_value - right->int_value;
-	return result;	
+		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->type = INTEGER_TYPE;
+		 	result->int_value = left->int_value - right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->type = INTEGER_TYPE;
+		 	result->int_value = left->int_value - right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->type = DOUBLE_TYPE;
+		 	result->double_value = left->double_value - right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->type = DOUBLE_TYPE;
+		 	result->double_value = left->double_value - right->int_value;
+		        return result;
+		}
+	cout << "Can't minus diffrent types or boolean ones." << endl;	
+	exit(0);	
     }
     
     if (expr->type == EXPR_MUL) {
-        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
-	result->type = INTEGER_TYPE;
-	result->int_value = left->int_value * right->int_value;
-	return result;	
+       		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->type = INTEGER_TYPE;
+		 	result->int_value = left->int_value * right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->type = INTEGER_TYPE;
+		 	result->int_value = left->int_value * right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->type = DOUBLE_TYPE;
+		 	result->double_value = left->double_value * right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->type = DOUBLE_TYPE;
+		 	result->double_value = left->double_value * right->int_value;
+		        return result;
+		}
+	cout << "Can't mul diffrent types or boolean ones." << endl;	
+	exit(0);	
     }
     
     if (expr->type == EXPR_DIV) {
-        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
-	result->type = INTEGER_TYPE;
-	result->int_value = left->int_value / right->int_value;
-	return result;	
+       		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->type = INTEGER_TYPE;
+		 	result->int_value = left->int_value / right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->type = INTEGER_TYPE;
+		 	result->int_value = left->int_value / right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->type = DOUBLE_TYPE;
+		 	result->double_value = left->double_value / right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->type = DOUBLE_TYPE;
+		 	result->double_value = left->double_value / right->int_value;
+		        return result;
+		}
+	cout << "Can't div diffrent types or boolean ones." << endl;	
+	exit(0);	
     }
 
     if (expr->type == EXPR_OR) {
         if (left->type != BOOLEAN_TYPE || right->type != BOOLEAN_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
+	    cout << "Wrong types in OR expression!" << endl;
 	    exit(0);	
 	}
 	result->type = BOOLEAN_TYPE;
@@ -768,7 +871,7 @@ TMyVariable* processExpression(TMyExpression* expr, map<string, vector<TMyVariab
 
     if (expr->type == EXPR_AND) {
         if (left->type != BOOLEAN_TYPE || right->type != BOOLEAN_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
+	    cout << "Wrong types in AND expression!" << endl;
 	    exit(0);	
 	}
 	result->type = BOOLEAN_TYPE;
@@ -777,71 +880,169 @@ TMyVariable* processExpression(TMyExpression* expr, map<string, vector<TMyVariab
     }
 
     if (expr->type == EXPR_GE) {
-        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
 	result->type = BOOLEAN_TYPE;
-	result->bool_value = left->int_value >= right->int_value;
-	return result;	
+		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->int_value >= right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->int_value >= right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->double_value >= right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->double_value >= right->int_value;
+		        return result;
+		}
+		if (left->type == STRING_TYPE && right->type == STRING_TYPE) {
+		 	result->bool_value = (*left->string_value >= *right->string_value);
+		        return result;
+		}
+	cout << "Can't >= diffrent types or boolean ones." << endl;	
+	exit(0);
     }
 
     if (expr->type == EXPR_LE) {
-        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
 	result->type = BOOLEAN_TYPE;
-	result->bool_value = left->int_value <= right->int_value;
-	return result;	
+		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->int_value <= right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->int_value <= right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->double_value <= right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->double_value <= right->int_value;
+		        return result;
+		}
+		if (left->type == STRING_TYPE && right->type == STRING_TYPE) {
+		 	result->bool_value = (*left->string_value <= *right->string_value);
+		        return result;
+		}
+	cout << "Can't <= diffrent types or boolean ones." << endl;	
+	exit(0);
     }
 
     if (expr->type == EXPR_GT) {
-        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
 	result->type = BOOLEAN_TYPE;
-	result->bool_value = left->int_value > right->int_value;
-	return result;	
+		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->int_value > right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->int_value > right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->double_value > right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->double_value > right->int_value;
+		        return result;
+		}
+		if (left->type == STRING_TYPE && right->type == STRING_TYPE) {
+		 	result->bool_value = (*left->string_value > *right->string_value);
+		        return result;
+		}
+	cout << "Can't > diffrent types or boolean ones." << endl;	
+	exit(0);
     }
 
     if (expr->type == EXPR_LT) {
-        if (left->type != INTEGER_TYPE || right->type != INTEGER_TYPE) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
-	result->type = BOOLEAN_TYPE;
-	result->bool_value = left->int_value < right->int_value;
-	return result;	
+  	result->type = BOOLEAN_TYPE;
+		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->int_value < right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->int_value < right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->double_value < right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->double_value < right->int_value;
+		        return result;
+		}
+		if (left->type == STRING_TYPE && right->type == STRING_TYPE) {
+		 	result->bool_value = (*left->string_value < *right->string_value);
+		        return result;
+		}
+	cout << "Can't < diffrent types or boolean ones." << endl;	
+	exit(0);
     }
 
     if (expr->type == EXPR_EQ) {
-        if (left->type != right->type) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
-	result->type = BOOLEAN_TYPE;
-	if (left->type = INTEGER_TYPE) {
-	    result->bool_value = left->int_value == right->int_value;
-	} else {
-	    result->bool_value = left->bool_value == right->bool_value;	
-	}
-	return result;	
+        result->type = BOOLEAN_TYPE;
+		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->int_value == right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->int_value == right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->double_value == right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->double_value == right->int_value;
+		        return result;
+		}
+		if (left->type == STRING_TYPE && right->type == STRING_TYPE) {
+		 	result->bool_value = (*left->string_value == *right->string_value);
+		        return result;
+		}
+		if (left->type == BOOLEAN_TYPE && right->type == BOOLEAN_TYPE) {
+		 	result->bool_value = (left->bool_value == right->bool_value);
+		        return result;
+		}
+		
+	cout << "Can't == diffrent types or boolean ones." << endl;	
+	exit(0);
     }
 
     if (expr->type == EXPR_NE) {
-        if (left->type != right->type) {
-	    cout << "Wrong types in expression!" << endl;
-	    exit(0);	
-	}
-	result->type = BOOLEAN_TYPE;
-	if (left->type = INTEGER_TYPE) {
-	    result->bool_value = left->int_value != right->int_value;
-	} else {
-	    result->bool_value = left->bool_value != right->bool_value;	
-	}
-	return result;	
+         result->type = BOOLEAN_TYPE;
+		if (left->type == INTEGER_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->int_value != right->double_value;
+		        return result;
+		}
+		if (left->type == INTEGER_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->int_value != right->int_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == DOUBLE_TYPE) {
+		 	result->bool_value = left->double_value != right->double_value;
+		        return result;
+		}
+		if (left->type == DOUBLE_TYPE && right->type == INTEGER_TYPE) {
+		 	result->bool_value = left->double_value != right->int_value;
+		        return result;
+		}
+		if (left->type == STRING_TYPE && right->type == STRING_TYPE) {
+		 	result->bool_value = (*left->string_value != *right->string_value);
+		        return result;
+		}
+		if (left->type == BOOLEAN_TYPE && right->type == BOOLEAN_TYPE) {
+		 	result->bool_value = (left->bool_value != right->bool_value);
+		        return result;
+		}
+		
+	cout << "Can't != diffrent types or boolean ones." << endl;	
+	exit(0);	
     }
 
     cout << "Failed to calculate expression!" << endl; 
@@ -862,6 +1063,12 @@ void processDeclaration(TMyDeclaration* declaration,  set<string> &local, map<st
 	    if (newVar->type == BOOLEAN_TYPE) {
 		newVar->bool_value = expr->bool_value; 
 	    }
+	    if (newVar->type == DOUBLE_TYPE) {
+		newVar->double_value = expr->double_value; 
+	    }
+	    if (newVar->type == STRING_TYPE) {
+		newVar->string_value = new string(*expr->string_value); 
+	    }
 	} else {
 	    newVar->initialized = false;
 	}
@@ -872,14 +1079,23 @@ void processSYSTEMOUTPRINTLN(TMyExpressionList* x, map<string, vector<TMyVariabl
     for(int i = 0; i < x->data.size(); ++i) {
         TMyVariable* expr = processExpression(x->data[i], var);
 	if (expr->type == INTEGER_TYPE) {
-	    cout << expr->int_value << ' ';
-	} else {
-	    if (expr->bool_value == true) {
-	       cout << "true";
-	    } else {
-		   cout << "false";
-            }
-	}
+	    cout << expr->int_value;
+	    continue;
+	} 
+	if (expr->type == BOOLEAN_TYPE) {
+	    if (expr->bool_value) 
+               cout << "true"; else cout << "false";
+	    continue;
+	} 
+	if (expr->type == DOUBLE_TYPE) {
+	    cout.precision(12);
+	    cout << fixed << expr->double_value;
+	    continue;
+	} 
+	if (expr->type == STRING_TYPE) {
+	    cout << *expr->string_value;
+	    continue;
+	} 
     }
     cout << endl;
 }
@@ -889,16 +1105,26 @@ void processSYSTEMOUTPRINT(TMyExpressionList* x, map<string, vector<TMyVariable*
     for(int i = 0; i < x->data.size(); ++i) {
         TMyVariable* expr = processExpression(x->data[i], var);
 	if (expr->type == INTEGER_TYPE) {
-	    cout << expr->int_value << ' ';
-	} else {
-	    if (expr->bool_value == true) {
-	       cout << "true";
-	    } else {
-		   cout << "false";
-            }
-	}
+	    cout << expr->int_value;
+	    continue;
+	} 
+	if (expr->type == BOOLEAN_TYPE) {
+	    if (expr->bool_value) 
+               cout << "true"; else cout << "false";
+	    continue;
+	} 
+	if (expr->type == DOUBLE_TYPE) {
+	    cout.precision(12);
+	    cout << expr->double_value;
+	    continue;
+	} 
+	if (expr->type == STRING_TYPE) {
+	    cout << *expr->string_value;
+	    continue;
+	} 
     }
 }
+
 
 TMyVariable* processDefinition(TMyDefinition* x, map<string, vector<TMyVariable*> > &var) {
     TMyVariable* expr = getVariable(x->name, var);
@@ -960,6 +1186,80 @@ TMyVariable* callMyFunction(TMyFunctionCall* xx, TMyFunction* y, map<string, vec
    return runFunction(y,var2);
 }
 
+TMyVariable* processINTEGERPARSE(TMyExpressionList* x, map<string, vector<TMyVariable*> > &var) {
+     if (x->data.size() != 1) {
+	cout << "Wrong number of args in parseInteger." << endl;
+	exit(0);
+     }
+     TMyVariable* expr = processExpression(x->data[0], var);
+     
+     if (expr->type != STRING_TYPE) {
+	cout << "Wrong argument type in parseInteger." << endl;
+	exit(0);
+     }
+     expr->type = INTEGER_TYPE;
+     expr->int_value = atoi((*expr->string_value).c_str()); 
+     return expr;
+}
+
+
+TMyVariable* processDOUBLEPARSE(TMyExpressionList* x, map<string, vector<TMyVariable*> > &var) {
+     if (x->data.size() != 1) {
+	cout << "Wrong number of args in parseInteger." << endl;
+	exit(0);
+     }
+     TMyVariable* expr = processExpression(x->data[0], var);
+     if (expr->type != STRING_TYPE) {
+	cout << "Wrong argument type in parseInteger." << endl;
+	exit(0);
+     }
+     expr->type = DOUBLE_TYPE;
+     expr->double_value = atof((*expr->string_value).c_str()); 
+     return expr;
+}
+
+string ConvertF (float number){
+    std::ostringstream buff;
+    buff<<number;
+    return buff.str();   
+}
+
+string ConvertI (int number){
+    std::ostringstream buff;
+    buff<<number;
+    return buff.str();   
+}
+
+TMyVariable* processDOUBLETOSTRING(TMyExpressionList* x, map<string, vector<TMyVariable*> > &var) {
+     if (x->data.size() != 1) {
+	cout << "Wrong number of args in Double to string." << endl;
+	exit(0);
+     }
+     TMyVariable* expr = processExpression(x->data[0], var);
+     if (expr->type != DOUBLE_TYPE) {
+	cout << "Wrong argument type in Double to string." << endl;
+	exit(0);
+     }
+     expr->type = STRING_TYPE;
+     expr->string_value = new string(ConvertF(expr->double_value)); 
+     return expr;
+}
+
+TMyVariable* processINTEGERTOSTRING(TMyExpressionList* x, map<string, vector<TMyVariable*> > &var) {
+     if (x->data.size() != 1) {
+	cout << "Wrong number of args in Integer to string." << endl;
+	exit(0);
+     }
+     TMyVariable* expr = processExpression(x->data[0], var);
+     if (expr->type != INTEGER_TYPE) {
+	cout << "Wrong argument type in Integer to string." << endl;
+	exit(0);
+     }
+     expr->type = STRING_TYPE;
+     expr->string_value = new string(ConvertI(expr->int_value)); 
+     return expr;
+}
+
 TMyVariable* processFunctionCall(TMyFunctionCall* x, map<string, vector<TMyVariable*> > &var) {
     if (x->name == "System.out.println") {
 	    processSYSTEMOUTPRINTLN(x->expressions,var);
@@ -969,6 +1269,19 @@ TMyVariable* processFunctionCall(TMyFunctionCall* x, map<string, vector<TMyVaria
 	    processSYSTEMOUTPRINT(x->expressions,var);
 	    return NULL;      	
 	}
+    if (x->name == "Integer.parse") {
+	    return processINTEGERPARSE(x->expressions,var);	
+	}
+    if (x->name == "Double.parse") {
+	    return processDOUBLEPARSE(x->expressions,var);	
+	}
+    if (x->name == "Integer.toString") {
+	    return processINTEGERTOSTRING(x->expressions,var);	
+	}
+    if (x->name == "Double.toString") {
+	    return processDOUBLETOSTRING(x->expressions,var);	
+	}
+
     for(int i = 0; i < functions->data.size(); ++i) {
 	if (functions->data[i]->name == x->name) {
 	    return callMyFunction(x, functions->data[i], var);	
@@ -1040,7 +1353,7 @@ TMyVariable* processNodes(TNodeList* algo, map<string, vector<TMyVariable*> > &v
     if (algo == NULL) {
     	return NULL;
     }
-    //cout << "123" << endl;
+
     set<string> local;
     TMyVariable* returnValue;
     for(int i = 0; i < algo->data.size(); ++i) {
@@ -1090,7 +1403,7 @@ void yyerror(const char *s)
 
 // инициализация перед парсингом всего
 void init() {
-    
+    mainProgram = NULL;
 }
 
 int main(int argc, char** argv)
@@ -1105,9 +1418,8 @@ int main(int argc, char** argv)
     init();
     
     yyparse(); 
-    printf("The build was successfull!\n\n\n\nRunning the programm...\n\n\n");
-
-    runTheProgramm(mainProgram);
+    if (mainProgram != NULL)printf("The build was successfull!\nRunning the programm...\n\n\n");
+    if (mainProgram != NULL) runTheProgramm(mainProgram);
     return 0;
 }
 

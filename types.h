@@ -2,6 +2,8 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <stdio.h>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -14,6 +16,7 @@ const int BOOLEAN_TYPE = 1;
 const int INTEGER_TYPE = 2;
 const int VOID_TYPE = 3;
 const int STRING_TYPE = 4;
+const int DOUBLE_TYPE = 5;
 struct TMyVariable {
     string name;      // имя
     int type;         // тип
@@ -24,7 +27,8 @@ struct TMyVariable {
     union {
 	int int_value;        // целое значение
 	bool bool_value;      // булево
-	char* string_value;   // строковое	
+	string* string_value;   // строковое	
+	double double_value;  // дробное
     };
 
     // конструктор
@@ -169,6 +173,9 @@ const int EXPR_LE = 15;
 const int EXPR_GT = 16;
 const int EXPR_LT = 17;
 
+const int EXPR_STRING = 18;
+const int EXPR_DOUBLE = 19;
+
 struct TMyExpression {
     int type;
     union {
@@ -176,6 +183,7 @@ struct TMyExpression {
 	bool booleanValue;
 	string* name;
 	TMyFunctionCall* function;
+	double doubleValue;
     };
     TMyExpression* left;
     TMyExpression* right;

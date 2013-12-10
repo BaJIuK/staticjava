@@ -6,12 +6,16 @@
 
 
 void yyerror(const char *);
-//VarTableRecord * var_pointer;
+string str;
+
 %}
 %option yylineno
+%x STR
+
 %%
 
 [0-9]+  {yylval.intValue = atoi(yytext);return INTEGER;}
+[0-9]+[.][0-9]*  {yylval.doubleValue = atof(yytext);return DOUBLE;}
 if      {return IF;}
 else    {return ELSE;}
 then    {return THEN;}
@@ -36,12 +40,21 @@ static  {return STATIC;}
 void	{return VOID;}
 int	{return INTEGER;}
 boolean {return BOOLEAN;}
-String  {return STRING;}
+"String"  {return STRING;}
+double  {return DOUBLE;}
 "return"  {return RETURN;}
 
 
 "{"	{return BEGIN_BRACKET;}
 "}"	{return END_BRACKET;}
+
+["] { str = ""; BEGIN(STR); }
+<STR>[^\\\n"]+ str += yytext;
+<STR>\\n str += '\n';
+<STR>\\["] str += '"';
+<STR>\\ yyerror("Invalid escape sequence");
+<STR>\n yyerror("Newline in string literal");
+<STR>["] { BEGIN(INITIAL); yylval.stringValue = strdup(str.c_str()); return STRING; }
 
 [a-zA-Z_][a-zA-Z_0-9.]* { 
                            yylval.stringValue = strdup(yytext);//имя                     
