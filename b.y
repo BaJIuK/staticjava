@@ -1130,12 +1130,18 @@ TMyVariable* processDefinition(TMyDefinition* x, map<string, vector<TMyVariable*
     TMyVariable* expr = getVariable(x->name, var);
     TMyVariable* cool = processExpression(x->expression, var);
     if (expr->type == INTEGER_TYPE) {
-	if (cool->type != INTEGER_TYPE) {
-	    cout << "Wrong expression type!" << endl;
-	    exit(0);
+	if (cool->type == INTEGER_TYPE) {
+	    expr->int_value = cool->int_value;	
+	    return NULL;
 	}
-        expr->int_value = cool->int_value;
+	if (cool->type == DOUBLE_TYPE) {
+	    expr->int_value = cool->double_value;	
+            return NULL;
+	}
+        cout << "Wrong expression type!" << endl;
+        exit(0); 
     }
+
     if (expr->type == BOOLEAN_TYPE) {
     	if (cool->type != BOOLEAN_TYPE) {
 	    cout << "Wrong expression type!" << endl;
@@ -1143,6 +1149,28 @@ TMyVariable* processDefinition(TMyDefinition* x, map<string, vector<TMyVariable*
 	}
 	expr->bool_value = cool->bool_value;
     }
+
+    if (expr->type == DOUBLE_TYPE) {
+	if (cool->type == INTEGER_TYPE) {
+	    expr->double_value = cool->int_value;	
+	    return NULL;
+	}
+	if (cool->type == DOUBLE_TYPE) {
+	    expr->double_value = cool->double_value;	
+            return NULL;
+	}
+        cout << "Wrong expression type!" << endl;
+        exit(0); 
+    }
+
+    if (expr->type == STRING_TYPE) {
+    	if (cool->type != STRING_TYPE) {
+	    cout << "Wrong expression type!" << endl;
+	    exit(0);
+	}
+	expr->string_value = new string(*cool->string_value);
+    }
+
     return NULL;  
 }
 
@@ -1180,6 +1208,31 @@ TMyVariable* callMyFunction(TMyFunctionCall* xx, TMyFunction* y, map<string, vec
 	    }
 	    x->bool_value = expr->bool_value;
 	}
+	if (args->data[i].type == DOUBLE_TYPE) {
+	    TMyVariable* expr = processExpression(list->data[i], var); 
+	    int f = false;
+	    if (expr->type == DOUBLE_TYPE) {
+	        x->double_value = expr->double_value;
+	        f = true;
+	    }
+	    if (expr->type == INTEGER_TYPE) {
+	        x->double_value = expr->int_value;
+	        f = true;
+	    }
+	    if (!f) {
+	    	cout << "Bad argument! " << endl;
+		exit(0);
+            }
+	}
+	if (args->data[i].type == STRING_TYPE) {
+	    TMyVariable* expr = processExpression(list->data[i], var); 
+	    if (expr->type != STRING_TYPE) {
+	    	cout << "Invalid expression type!" << endl;
+	        exit(0);
+	    }
+	    x->string_value = new string(*expr->string_value);
+	}
+
 	addVariable(x,local,var2);
     }
 
@@ -1286,7 +1339,9 @@ TMyVariable* processFunctionCall(TMyFunctionCall* x, map<string, vector<TMyVaria
 	if (functions->data[i]->name == x->name) {
 	    return callMyFunction(x, functions->data[i], var);	
 	}
-    } 	
+    } 
+    cout << "Wrong function name: " << x->name << endl;
+    exit(0);	
 }
 
 TMyVariable* processNodes(TNodeList* algo, map<string, vector<TMyVariable*> > &var);

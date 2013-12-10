@@ -1,0 +1,44 @@
+public class Nod {
+    
+    public static int main() {
+    	NodCounter(32,12);
+	NodCounter(1001,121);
+	NodCounter(1001000,121000);
+
+        System.out.println("Table of NODs t[i][j] = NOD(i,j) (i,j from 1 to 10)");
+	int i = 1; 
+	while (i < 10) {
+	    int j = 1;
+	    while(j < 10) {
+	    	print(NOD(i,j));
+		j = j + 1;
+	    }
+	    System.out.println();
+	    i = i + 1;
+	}
+	return 0;	
+    }
+ 
+    public static void NodCounter(int a, int b) {
+	System.out.print("Calculate NOD(", Integer.toString(a),",",Integer.toString(b),")");
+	int nod = NOD(a,b);
+	System.out.println(" = ", nod);
+    }
+    
+    public static int NOD(int a, int b) {
+	if (a > b) {
+	    return NOD(b,a);
+	} 
+	else {
+	    if (a == 0) {return b;} else {return NOD(mod(b,a),a);}		
+	}
+    }
+	
+    public static int mod(int a, int b) {
+    	return a - (a / b) * b; 
+    }
+
+    public static void print(int a) {
+        System.out.print(a, " ");
+    }	
+}

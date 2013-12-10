@@ -1,0 +1,30 @@
+public class StringTest {
+
+    public static int main() {
+	String f1 = "a";
+	String f2 = "b";
+
+	System.out.println("Fibonacci strings!" + " f0=" + f1 + " f1=" + f2);
+	
+	int i = 0;
+	while (i < 10) {
+	 System.out.print("f" + Integer.toString(i) + "=");
+	 String tmp = f2;
+	 f2 = f1 + f2;
+	 f1 = tmp;
+	 System.out.println(f1);
+	 i = i + 1;	
+	}
+
+	double q = 3.14;
+	String x = Double.toString(q);	
+	System.out.println(x);
+
+	int w = 111111;
+	String y = Integer.toString(w);
+	System.out.println(y);
+		
+	return 0;
+    }   
+ 
+}

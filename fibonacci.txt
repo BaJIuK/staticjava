@@ -1,0 +1,36 @@
+public class Fibonacci {
+    public static int main() {
+	int n = 20;
+	System.out.println("Calculate fibonacci from 0 to " + Integer.toString(n));
+	
+	System.out.println("Recursively : ");	
+	int i = 0;
+	while (i < n + 1) {	
+	        System.out.print("Fib[",i,"] = ");
+		System.out.println(fibRec(0,i,0,1));
+	        i = i + 1;
+	}
+	
+        System.out.println();
+	System.out.println("In while cycle : ");
+	i = 0;
+	int t1 = 0;
+	int t2 = 1;
+	while (i != n + 1) {
+	   System.out.print("Fib[",i,"] = ");
+	   System.out.println(t1);
+	   int tmp = t2;
+	   t2 = t2 + t1;
+	   t1 = tmp; 	
+	   i = i + 1;
+	}
+
+	return 0;
+    }
+    
+    public static int fibRec(int t, int n, int f1, int f2) {
+        if (n == 0 || t == n) {return f1;}
+        if (n == 1) {return f2;}
+	return fibRec(t + 1, n, f2, f1 + f2);
+    }
+}

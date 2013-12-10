@@ -1,0 +1,42 @@
+public class Double {
+    
+    public static double circleLength(double radius) {
+	double pi = 3.14159265359;
+	int a = 2;
+	return pi * radius * a;
+    }
+
+    public static int main() {
+
+	double pi = 3.14159265359 * 2;
+	int i = 0;
+	while (i < 10) {
+	    System.out.print("Circle with radius: ",i," has length: ");
+            double q = circleLength(i);
+	    System.out.println(q);
+	    i = i + 1;
+	}	
+	
+	compare(pi,3.14);
+	compare(2*pi,6.29);
+	compare(pi*pi+2*2, (2.0*((2)))+(((pi*pi))) + pi/pi - 1);
+	
+	return 0;
+    }
+
+    public static void compare(double a, double b) {
+	System.out.print("Compare : ");        
+	if (a > b) {
+	    System.out.println(" ",a," > ",b);
+	} else {
+	    if (a < b) {
+                System.out.println(" ",a," < ",b);	    
+	    } else {
+		if (a == b) {
+		    System.out.println(" ",a," = ",b);		
+		}
+	    }	
+	}
+    }
+    
+}
