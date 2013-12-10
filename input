@@ -1,0 +1,103 @@
+public class Fibonacci {
+    
+    public static int fib(int n, int k, int t1, int t2) {
+        if (n == k) {return t2;}
+        if (k == 0) {return t1;}
+        if (k == 1) {return t2;}
+        return fib(n+1,k,t2,t1+t2);
+    }    
+
+
+    public static int q(int i) {
+       {
+        return i + 1;
+       }
+    }
+
+    public static void ifstmt() {
+        if (1 == 1) {System.out.println(true);}
+        if (1 == 1) {System.out.println(true);} else {System.out.println(false);}
+        if (1 == 2) {} else {System.out.println(false);}
+
+        int a = 2;
+        int b = 3;
+        if (a > b) {
+           c(a);        
+        } else {
+           c(b);        
+        }
+        
+    }
+
+    public static int main() {
+        
+        int i = 0;
+        while(i < 20) {
+           c(fib(1,i,0,1));
+           i = i + 1;        
+        }
+        
+        System.out.println();
+
+        if (1 == 1) {System.out.println(true);} else {int i = 2;}
+
+        c(fib(1,20,0,1));
+        c(fib(1,19,0,1));
+        c(fib(1,18,0,1));
+        if (fib(1,18,0,1) + fib(1,19,0,1) == fib(1,20,0,1)) {
+        c(1);        
+        } else {c(0);}
+        c(q(q(q(q(0)))));
+        ifstmt();
+        return 0;
+    }
+
+    public static int asdn(int asdf) {
+        int i = 5;
+        {
+                int j = 1 + 1;
+                System.out.println(i,j,i+j);
+                {
+                   int i = 0;
+                    System.out.println(i,j,i+j);
+                }
+        }
+        System.out.println();
+    }
+
+    public static void c(int a) {
+        System.out.println(a);
+    }
+
+
+    public static void super(int asdf) {
+        int i = 5;
+        int t = 1 + i;
+        System.out.println(i, i + i, i + i + i);
+        System.out.println(t, t + i);
+        System.out.println(i * t);
+        System.out.println(i < t);
+        System.out.println(i > t);
+        System.out.println(i <= i);
+        System.out.println(i <= t);
+        System.out.println(i >= i);
+        System.out.println(i >= t);
+        System.out.println(i);
+        System.out.println(i / (t - 4));
+        System.out.println();
+        System.out.println();
+        boolean k = true;
+        boolean w = false;
+        System.out.println(k != w);
+        System.out.println(k == w);
+        System.out.println(k && w);
+        System.out.println(k || w);
+        System.out.println((k && w));
+        System.out.println(!(k || w));
+        System.out.println(!!(k || w));
+        System.out.println(!!(!k || w));
+        i = i + i + i + i * 2;
+        k = !!!(!(i == 26) && (12 == 12));
+        System.out.println(i , k);
+    }
+}
